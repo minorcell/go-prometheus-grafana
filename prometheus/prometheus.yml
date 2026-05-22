@@ -1,13 +1,31 @@
+# ============================================================
+# Prometheus 配置文件
+# 定义「从哪些目标、以什么频率、抓取哪些指标」
+# ============================================================
+
+# ---- 全局配置 ----
 global:
+  # scrape_interval: Prometheus 多久主动拉取一次目标服务的 /metrics
+  # 5 秒是开发环境的值，生产环境建议 15-30 秒以降低开销
   scrape_interval: 5s
+
+  # evaluation_interval: 告警规则的计算频率
   evaluation_interval: 5s
 
+# ---- 抓取目标 ----
 scrape_configs:
+
+  # --- Job 1: Prometheus 自监控 ---
+  # Prometheus 自身也暴露 /metrics 端点，可以监控自己的运行状态
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
 
+  # --- Job 2: Go Server ---
+  # 这是我们自己的 Go 应用
+  # server:8080 → 通过 Docker Compose 网络 DNS 解析
   - job_name: "go-server"
     static_configs:
       - targets: ["server:8080"]
+    # metrics_path 默认为 /metrics，与 Go 服务端一致
     metrics_path: /metrics

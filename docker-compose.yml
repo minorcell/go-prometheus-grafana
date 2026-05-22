@@ -1,47 +1,74 @@
-services:
-  server:
-    build: ./server
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
+# ============================================================
+# Docker Compose 编排文件
+# 一键启动整个监控链路：Go Server → Prometheus → Grafana
+#
+# 启动:     docker compose up --build
+# 停止:     docker compose down
+# 清除数据: docker compose down -v
+# ============================================================
 
-  prometheus:
-    image: prom/prometheus:v2.50.1
+services:
+  # ==================== Go 服务端 ====================
+  # 业务服务器，暴露 /metrics 端点供 Prometheus 抓取
+  server:
+    build: ./server                    # 使用 server/Dockerfile 构建
     ports:
-      - "9090:9090"
+      - "8080:8080"                    # 映射到宿主机，方便本地直接访问
+    restart: unless-stopped            # 异常退出时自动重启
+
+  # ==================== Prometheus ====================
+  # 指标采集和时序存储
+  prometheus:
+    image: prom/prometheus:v2.50.1     # 使用官方镜像
+    ports:
+      - "9090:9090"                    # Prometheus Web UI 和 API 端口
     volumes:
+      # 挂载配置文件
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      # 持久化时序数据（Docker 数据卷，不会因容器重启丢失）
       - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=7d"
+      - "--storage.tsdb.path=/prometheus"       # 数据存储路径
+      - "--storage.tsdb.retention.time=7d"      # 数据保留 7 天
     depends_on:
-      - server
+      - server                          # 确保 server 先启动
     restart: unless-stopped
 
+  # ==================== 压测客户端 ====================
+  # 持续向 server 发送请求，产生流量和指标数据
   client:
-    build: ./client
+    build: ./client                    # 使用 client/Dockerfile 构建
     depends_on:
-      - server
+      - server                          # 等 server 就绪后再启动
     restart: unless-stopped
 
+  # ==================== Grafana ====================
+  # 数据可视化面板，连接 Prometheus 数据源
   grafana:
-    image: grafana/grafana:10.3.3
+    image: grafana/grafana:10.3.3      # 使用官方镜像
     ports:
-      - "3000:3000"
+      - "3000:3000"                    # Grafana Web UI 端口
     environment:
+      # 默认管理员账号密码（开发环境用，生产环境请改为安全密码）
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_SIGN_UP=false   # 禁止用户注册
     volumes:
+      # 挂载自动配置目录（数据源 + Dashboard Provider）
       - ./grafana/provisioning:/etc/grafana/provisioning
+      # 挂载预置的 Dashboard JSON 文件
       - ./grafana/dashboards:/var/lib/grafana/dashboards
+      # 持久化 Grafana 配置和数据
       - grafana_data:/var/lib/grafana
     depends_on:
-      - prometheus
+      - prometheus                      # 确保 Prometheus 先启动
     restart: unless-stopped
 
+# ============================================================
+# 数据卷定义
+# Docker 管理的命名卷，存储在 Docker 内部
+# ============================================================
 volumes:
-  prometheus_data:
-  grafana_data:
+  prometheus_data:   # Prometheus 时序数据
+  grafana_data:      # Grafana 配置、Dashboard、用户数据

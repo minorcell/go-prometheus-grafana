@@ -1,12 +1,19 @@
+# ============================================================
+# Grafana Dashboard 自动加载配置（Dashboard Provider）
+# 启动时自动从指定路径加载 JSON 文件，无需手动导入
+# ============================================================
+
 apiVersion: 1
 
 providers:
-  - name: "default"
-    orgId: 1
-    folder: ""
-    type: file
-    disableDeletion: false
-    editable: true
+  - name: "default"                    # Provider 名称
+    orgId: 1                           # Grafana 组织 ID
+    folder: ""                         # Dashboard 存放文件夹（空 = 根目录）
+    type: file                         # 从文件加载
+    disableDeletion: false             # 允许通过 UI 删除
+    editable: true                     # 允许在 UI 中修改 Dashboard
     options:
+      # Dashboard JSON 文件的扫描路径
+      # 映射到 docker-compose 中挂载的 grafana/dashboards/ 目录
       path: /var/lib/grafana/dashboards
-      foldersFromFilesStructure: false
+      foldersFromFilesStructure: false # 不按子目录创建文件夹
