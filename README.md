@@ -2,6 +2,8 @@
 
 一个完整的可观测性学习环境：Go HTTP Server → Prometheus → Grafana。
 
+> 交互教学：[可观测性实战：Prometheus + Grafana 全栈监控](https://mcell.top/tutorials/observability-prometheus-grafana)
+
 ## 架构
 
 ```
